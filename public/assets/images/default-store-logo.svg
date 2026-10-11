@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" fill="none">
+    <defs>
+        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#00D9FF"/>
+            <stop offset="100%" stop-color="#1677FF"/>
+        </linearGradient>
+        <filter id="logoGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="4" result="glow"/>
+            <feComposite in="SourceGraphic" in2="glow" operator="over"/>
+        </filter>
+    </defs>
+    <rect width="100" height="100" rx="24" fill="#080B12" stroke="rgba(0, 217, 255, 0.4)" stroke-width="3"/>
+    <!-- Sleek Tech Icon: Play / Prism / Cut Diamond -->
+    <path d="M32 26L72 50L32 74V26Z" fill="url(#logoGrad)" filter="url(#logoGlow)"/>
+    <path d="M46 38L66 50L46 62V38Z" fill="#FFFFFF" opacity="0.9"/>
+</svg>
