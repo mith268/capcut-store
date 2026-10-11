@@ -14,6 +14,7 @@ class InventoryCredential extends Model
 
     protected $fillable = [
         'product_id',
+        'variant_id',
         'email_encrypted',
         'password_encrypted',
         'notes_encrypted',
@@ -40,6 +41,11 @@ class InventoryCredential extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class);
     }
 
     public function order(): BelongsTo

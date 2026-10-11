@@ -5,6 +5,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
@@ -15,8 +16,16 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-// Homepage
+// Homepage (Configurable: Landing offer or Store catalog)
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Multi-Product Store Catalog & Product Details
+Route::get('/store', [StoreController::class, 'index'])->name('store.index');
+Route::get('/category/{slug}', [StoreController::class, 'category'])->name('category.show');
+Route::get('/products/{slug}', [StoreController::class, 'product'])->name('products.show');
+Route::redirect('/store/{slug}', '/products/{slug}', 301);
+Route::redirect('/product/{slug}', '/products/{slug}', 301);
+Route::redirect('/products', '/store', 301);
 
 // Checkout Flow
 Route::prefix('checkout')->name('checkout.')->group(function () {

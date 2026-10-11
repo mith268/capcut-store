@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\CategoryController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\FaqController;
@@ -29,11 +30,33 @@ Route::middleware('admin')->group(function () {
     // Dashboard
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Category Management
+    Route::prefix('categories')->name('categories.')->group(function () {
+        Route::get('/', [CategoryController::class, 'index'])->name('index');
+        Route::post('/', [CategoryController::class, 'store'])->name('store');
+        Route::put('/{category}', [CategoryController::class, 'update'])->name('update');
+        Route::delete('/{category}', [CategoryController::class, 'destroy'])->name('destroy');
+    });
+
     // Product Management
     Route::prefix('products')->name('products.')->group(function () {
         Route::get('/', [ProductController::class, 'index'])->name('index');
+        Route::get('/create', [ProductController::class, 'create'])->name('create');
+        Route::post('/', [ProductController::class, 'store'])->name('store');
         Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
         Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+        Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
+
+        // Variants
+        Route::post('/{product}/variants', [ProductController::class, 'storeVariant'])->name('variants.store');
+        Route::put('/variants/{variant}', [ProductController::class, 'updateVariant'])->name('variants.update');
+        Route::delete('/variants/{variant}', [ProductController::class, 'deleteVariant'])->name('variants.destroy');
+
+        // Media Gallery
+        Route::post('/{product}/media', [ProductController::class, 'storeMedia'])->name('media.store');
+        Route::delete('/media/{media}', [ProductController::class, 'deleteMedia'])->name('media.destroy');
+
+        // Features
         Route::post('/{product}/features', [ProductController::class, 'storeFeature'])->name('features.store');
         Route::delete('/features/{feature}', [ProductController::class, 'deleteFeature'])->name('features.destroy');
     });
