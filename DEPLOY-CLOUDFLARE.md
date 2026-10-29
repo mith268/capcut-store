@@ -24,9 +24,12 @@ This application is built with:
 
 ### Step 2: Build & Output Settings
 - **Framework Preset:** `Next.js`
-- **Build Command:** `npx prisma generate && npm run build`
+- **Build Command:** `npm run build`
 - **Build Output Directory:** `.next`
 - **Root Directory:** `/`
+- **Deploy Command:** Leave **BLANK** (Cloudflare Pages automatically uploads `.next`), or if you are using Cloudflare Workers, leave default `npx wrangler deploy`.
+
+> **Important:** If your Cloudflare dashboard has a "Deploy command" input field filled with `npx wrangler deploy` on a Pages project, simply delete it and leave it empty, or let `wrangler.toml` handle it via `[assets]`.
 
 ### Step 3: Set Environment Variables
 In the Cloudflare Pages settings under **Settings** → **Environment variables**, configure:
