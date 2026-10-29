@@ -13,13 +13,21 @@ interface OrderPageProps {
   searchParams: { token?: string; email?: string };
 }
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata({
   params,
 }: OrderPageProps): Promise<Metadata> {
-  const order = await prisma.order.findUnique({
-    where: { publicId: params.publicId },
-    select: { orderNumber: true, product: { select: { title: true } } },
-  });
+  let order: any = null;
+
+  try {
+    order = await prisma.order.findUnique({
+      where: { publicId: params.publicId },
+      select: { orderNumber: true, product: { select: { title: true } } },
+    });
+  } catch {
+    // Database may not be reachable during build
+  }
 
   if (!order) return { title: "Order Not Found | CapCut Store" };
 

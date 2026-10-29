@@ -17,15 +17,22 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const storeNameSetting = await prisma.storeSetting.findUnique({
-    where: { key: "store_name" },
-  });
-  const storeTaglineSetting = await prisma.storeSetting.findUnique({
-    where: { key: "store_tagline" },
-  });
+  let storeName = "Convora Store";
+  let storeTagline = "Premium Digital Tools & Verified Subscriptions";
 
-  const storeName = storeNameSetting?.value || "Convora Store";
-  const storeTagline = storeTaglineSetting?.value || "Premium Digital Tools & Verified Subscriptions";
+  try {
+    const storeNameSetting = await prisma.storeSetting.findUnique({
+      where: { key: "store_name" },
+    });
+    const storeTaglineSetting = await prisma.storeSetting.findUnique({
+      where: { key: "store_tagline" },
+    });
+
+    if (storeNameSetting?.value) storeName = storeNameSetting.value;
+    if (storeTaglineSetting?.value) storeTagline = storeTaglineSetting.value;
+  } catch {
+    // Database may not be reachable or initialized during build time
+  }
 
   return {
     title: {
@@ -51,16 +58,22 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Fetch tracking settings
-  const pixelIdSetting = await prisma.storeSetting.findUnique({
-    where: { key: "meta_pixel_id" },
-  });
-  const trackingEnabledSetting = await prisma.storeSetting.findUnique({
-    where: { key: "meta_tracking_enabled" },
-  });
+  let pixelId: string | undefined = undefined;
+  let isTrackingEnabled = true;
 
-  const pixelId = pixelIdSetting?.value;
-  const isTrackingEnabled = (trackingEnabledSetting?.value ?? "true") === "true";
+  try {
+    const pixelIdSetting = await prisma.storeSetting.findUnique({
+      where: { key: "meta_pixel_id" },
+    });
+    const trackingEnabledSetting = await prisma.storeSetting.findUnique({
+      where: { key: "meta_tracking_enabled" },
+    });
+
+    pixelId = pixelIdSetting?.value;
+    isTrackingEnabled = (trackingEnabledSetting?.value ?? "true") === "true";
+  } catch {
+    // Database may not be reachable or initialized during build time
+  }
 
   return (
     <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable} scroll-smooth`}>

@@ -16,7 +16,14 @@ import {
   Clock,
 } from "lucide-react";
 
-export const revalidate = 60; // 1 min ISR
+import { Category, Product, Plan } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
+
+type ProductWithPlans = Product & {
+  category: Category | null;
+  plans: Plan[];
+};
 
 const EBOOK_CATEGORY_SLUGS = [
   "pain-relief-spine",
@@ -30,58 +37,68 @@ export default async function StoreHomePage({
 }: {
   searchParams: { q?: string; category?: string };
 }) {
-  const settings = await prisma.storeSetting.findMany();
-  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+  let storeName = "Convora Store";
+  let storeBadge = "VERIFIED";
+  let whatsappNumber = "919990798996";
+  let categories: Category[] = [];
+  let products: ProductWithPlans[] = [];
 
-  const storeName = settingsMap.get("store_name") || "Convora Store";
-  const storeBadge = settingsMap.get("store_badge") || "VERIFIED";
-  const whatsappNumber = settingsMap.get("whatsapp_number") || "919990798996";
+  try {
+    const settings = await prisma.storeSetting.findMany();
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
 
-  // Query only eBook / digital wellness categories for homepage compliance
-  const categories = await prisma.category.findMany({
-    where: {
-      slug: { in: EBOOK_CATEGORY_SLUGS },
-      isActive: true,
-    },
-    orderBy: { displayOrder: "asc" },
-  });
+    if (settingsMap.get("store_name")) storeName = settingsMap.get("store_name")!;
+    if (settingsMap.get("store_badge")) storeBadge = settingsMap.get("store_badge")!;
+    if (settingsMap.get("whatsapp_number")) whatsappNumber = settingsMap.get("whatsapp_number")!;
 
-  const categoryIds = categories.map((c) => c.id);
-
-  // Query products belonging to eBook categories
-  const whereClause: Record<string, unknown> = {
-    status: "PUBLISHED",
-    visibility: "PUBLIC",
-    categoryId: { in: categoryIds },
-  };
-
-  if (searchParams.category) {
-    const matchedCat = categories.find((c) => c.slug === searchParams.category);
-    if (matchedCat) {
-      whereClause.categoryId = matchedCat.id;
-    }
-  }
-
-  if (searchParams.q) {
-    whereClause.OR = [
-      { title: { contains: searchParams.q } },
-      { shortDescription: { contains: searchParams.q } },
-      { subtitle: { contains: searchParams.q } },
-      { tags: { contains: searchParams.q } },
-    ];
-  }
-
-  const products = await prisma.product.findMany({
-    where: whereClause,
-    include: {
-      category: true,
-      plans: {
-        where: { isActive: true },
-        orderBy: { price: "asc" },
+    // Query only eBook / digital wellness categories for homepage compliance
+    categories = await prisma.category.findMany({
+      where: {
+        slug: { in: EBOOK_CATEGORY_SLUGS },
+        isActive: true,
       },
-    },
-    orderBy: [{ isFeatured: "desc" }, { displayOrder: "asc" }],
-  });
+      orderBy: { displayOrder: "asc" },
+    });
+
+    const categoryIds = categories.map((c) => c.id);
+
+    // Query products belonging to eBook categories
+    const whereClause: Record<string, unknown> = {
+      status: "PUBLISHED",
+      visibility: "PUBLIC",
+      categoryId: { in: categoryIds },
+    };
+
+    if (searchParams.category) {
+      const matchedCat = categories.find((c) => c.slug === searchParams.category);
+      if (matchedCat) {
+        whereClause.categoryId = matchedCat.id;
+      }
+    }
+
+    if (searchParams.q) {
+      whereClause.OR = [
+        { title: { contains: searchParams.q } },
+        { shortDescription: { contains: searchParams.q } },
+        { subtitle: { contains: searchParams.q } },
+        { tags: { contains: searchParams.q } },
+      ];
+    }
+
+    products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        category: true,
+        plans: {
+          where: { isActive: true },
+          orderBy: { price: "asc" },
+        },
+      },
+      orderBy: [{ isFeatured: "desc" }, { displayOrder: "asc" }],
+    });
+  } catch {
+    // Graceful fallback during build
+  }
 
   return (
     <>

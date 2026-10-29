@@ -5,16 +5,24 @@ import { StoreHeader } from "@/components/store/StoreHeader";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { ProductLandingClient } from "@/components/product/ProductLandingClient";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: { slug: string };
   searchParams: Record<string, string | string[] | undefined>;
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    include: { plans: true },
-  });
+  let product: any = null;
+
+  try {
+    product = await prisma.product.findUnique({
+      where: { slug: params.slug },
+      include: { plans: true },
+    });
+  } catch {
+    // Database may not be reachable during build
+  }
 
   if (!product) return {};
 

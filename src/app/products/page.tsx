@@ -5,51 +5,66 @@ import { StoreHeader } from "@/components/store/StoreHeader";
 import { StoreFooter } from "@/components/store/StoreFooter";
 import { Search, Sparkles, CheckCircle2, ArrowRight } from "lucide-react";
 
-export const revalidate = 60;
+import { Category, Product, Plan } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
+
+type ProductWithPlans = Product & {
+  category: Category | null;
+  plans: Plan[];
+};
 
 export default async function ProductsCatalogPage({
   searchParams,
 }: {
   searchParams: { q?: string; category?: string; sort?: string };
 }) {
-  const settings = await prisma.storeSetting.findMany();
-  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
-  const storeName = settingsMap.get("store_name") || "Convora Store";
+  let storeName = "Convora Store";
+  let categories: Category[] = [];
+  let products: ProductWithPlans[] = [];
 
-  const categories = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: { displayOrder: "asc" },
-  });
+  try {
+    const settings = await prisma.storeSetting.findMany();
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+    if (settingsMap.get("store_name")) storeName = settingsMap.get("store_name")!;
 
-  const whereClause: Record<string, unknown> = {
-    status: "PUBLISHED",
-    visibility: "PUBLIC",
-  };
+    categories = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { displayOrder: "asc" },
+    });
 
-  if (searchParams.category) {
-    const matched = categories.find((c) => c.slug === searchParams.category);
-    if (matched) whereClause.categoryId = matched.id;
-  }
+    const whereClause: Record<string, unknown> = {
+      status: "PUBLISHED",
+      visibility: "PUBLIC",
+    };
 
-  if (searchParams.q) {
-    whereClause.OR = [
-      { title: { contains: searchParams.q } },
-      { shortDescription: { contains: searchParams.q } },
-      { tags: { contains: searchParams.q } },
-    ];
-  }
+    if (searchParams.category) {
+      const matched = categories.find((c) => c.slug === searchParams.category);
+      if (matched) whereClause.categoryId = matched.id;
+    }
 
-  const products = await prisma.product.findMany({
-    where: whereClause,
-    include: {
-      category: true,
-      plans: {
-        where: { isActive: true },
-        orderBy: { price: "asc" },
+    if (searchParams.q) {
+      whereClause.OR = [
+        { title: { contains: searchParams.q } },
+        { shortDescription: { contains: searchParams.q } },
+        { tags: { contains: searchParams.q } },
+      ];
+    }
+
+    products = await prisma.product.findMany({
+      where: whereClause,
+      include: {
+        category: true,
+        plans: {
+          where: { isActive: true },
+          orderBy: { price: "asc" },
+        },
       },
-    },
-    orderBy: [{ isFeatured: "desc" }, { displayOrder: "asc" }],
-  });
+      orderBy: [{ isFeatured: "desc" }, { displayOrder: "asc" }],
+    });
+  } catch {
+    // Graceful fallback during build
+  }
 
   return (
     <>

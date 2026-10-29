@@ -5,33 +5,50 @@ import { formatINR, calculateSavingsPercentage } from "@/lib/format";
 import { StoreHeader } from "@/components/store/StoreHeader";
 import { StoreFooter } from "@/components/store/StoreFooter";
 
+import { Category, Product, Plan } from "@prisma/client";
+
+export const dynamic = "force-dynamic";
+
+type CategoryWithProducts = Category & {
+  products: (Product & {
+    plans: Plan[];
+  })[];
+};
+
 interface Props {
   params: { slug: string };
 }
 
 export default async function CategoryPage({ params }: Props) {
-  const category = await prisma.category.findUnique({
-    where: { slug: params.slug },
-    include: {
-      products: {
-        where: { status: "PUBLISHED", visibility: "PUBLIC" },
-        include: {
-          plans: {
-            where: { isActive: true },
-            orderBy: { price: "asc" },
+  let category: CategoryWithProducts | null = null;
+  let storeName = "Convora Store";
+
+  try {
+    category = await prisma.category.findUnique({
+      where: { slug: params.slug },
+      include: {
+        products: {
+          where: { status: "PUBLISHED", visibility: "PUBLIC" },
+          include: {
+            plans: {
+              where: { isActive: true },
+              orderBy: { price: "asc" },
+            },
           },
         },
       },
-    },
-  });
+    });
+
+    const settings = await prisma.storeSetting.findMany();
+    const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+    if (settingsMap.get("store_name")) storeName = settingsMap.get("store_name")!;
+  } catch {
+    // Graceful fallback during build
+  }
 
   if (!category) {
     notFound();
   }
-
-  const settings = await prisma.storeSetting.findMany();
-  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
-  const storeName = settingsMap.get("store_name") || "Convora Store";
 
   return (
     <>
@@ -56,7 +73,7 @@ export default async function CategoryPage({ params }: Props) {
 
         {/* Product Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-          {category.products.map((product) => {
+          {category.products.map((product: any) => {
             const defaultPlan = product.plans[0];
             const lowestPrice = defaultPlan ? defaultPlan.price : 0;
             const comparePrice = defaultPlan?.compareAtPrice || 0;
