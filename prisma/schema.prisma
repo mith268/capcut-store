@@ -1,0 +1,296 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("ADMIN") // OWNER, ADMIN, CONTENT_EDITOR, FULFILLMENT_STAFF, SUPPORT, ANALYST
+  mfaEnabled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  phone        String?
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+}
+
+model Category {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  description  String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[]
+}
+
+model Product {
+  id                   String                 @id @default(cuid())
+  title                String
+  slug                 String                 @unique
+  shortTitle           String?
+  subtitle             String?
+  shortDescription     String?
+  longDescription      String?
+  categoryId           String?
+  category             Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags                 String?                // Comma-separated or JSON
+  thumbnail            String?
+  logo                 String?
+  gallery              String?                // JSON array of image URLs
+  videoUrl             String?
+  videoProvider        String?                // youtube, vimeo, direct
+  videoId              String?
+  status               String                 @default("DRAFT") // DRAFT, PUBLISHED, ARCHIVED
+  visibility           String                 @default("PUBLIC") // PUBLIC, UNLISTED, HIDDEN
+  isFeatured           Boolean                @default(false)
+  displayOrder         Int                    @default(0)
+  seoTitle             String?
+  seoDescription       String?
+  socialImage          String?
+  supportDetails       String?
+  policyContent        String?
+  themePrimaryColor    String?                @default("#00C8F4")
+  themeAccentColor     String?                @default("#1677FF")
+  themePreset          String?                @default("dark")
+  bonusEnabled         Boolean                @default(false)
+  bonusTitle           String?
+  bonusBadge           String?                @default("FREE BONUS")
+  bonusDescription     String?
+  bonusSubtitle        String?
+  bonusExplanation     String?
+  bonusImage           String?
+  bonusClaimType       String?                @default("EMAIL_INPUT") // EMAIL_INPUT, INSTANT, CODE
+  bonusDeliveryMethod  String?                @default("MANUAL")
+  stickyBarEnabled     Boolean                @default(true)
+  stickyBarText        String?
+  stickyBarButtonLabel String?                @default("Buy Now")
+  pixelIdOverride      String?
+  metaAccessTokenOverride String?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  plans                Plan[]
+  sections             LandingPageSection[]
+  revisions            LandingPageRevision[]
+  orders               Order[]
+  slugRedirects        ProductSlugRedirect[]
+}
+
+model ProductSlugRedirect {
+  id        String   @id @default(cuid())
+  oldSlug   String   @unique
+  newSlug   String
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model Plan {
+  id                   String                @id @default(cuid())
+  productId            String
+  product              Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name                 String
+  sku                  String                @unique
+  duration             String
+  price                Int                   // in paise (minor units) e.g. 29900 = ₹299
+  compareAtPrice       Int?                  // in paise
+  currency             String                @default("INR")
+  benefits             String?               // JSON array of strings
+  restrictions         String?               // JSON array of strings
+  deviceLimit          Int                   @default(1)
+  deliveryMethod       String                @default("CREDENTIALS") // CREDENTIALS, ACTIVATION_CODE, ACTIVATION_LINK, DOWNLOAD, MANUAL, ACCOUNT_INVITE
+  deliveryInstructions String?
+  stockPolicy          String                @default("FINITE") // FINITE, UNLIMITED
+  availableQuantity    Int                   @default(0)
+  minQuantity          Int                   @default(1)
+  maxQuantity          Int                   @default(5)
+  isActive             Boolean               @default(true)
+  isDefault            Boolean               @default(false)
+  isRecommended        Boolean               @default(false)
+  recommendedLabel     String?               @default("MOST POPULAR")
+  displayOrder         Int                   @default(0)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  inventories          CredentialInventory[]
+  orders               Order[]
+}
+
+model LandingPageSection {
+  id           String   @id @default(cuid())
+  productId    String?  // null = global store section, string = product section
+  product      Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sectionType  String   // ANNOUNCEMENT, HERO, KEY_FACTS, BENEFITS, FEATURES, PLAN_SELECTOR, PRICING, HOW_IT_WORKS, VIDEO_DEMO, SCREENSHOTS, BONUS, DELIVERY_GUIDE, REQUIREMENTS, FAQS, WARRANTY, TESTIMONIALS, FINAL_CTA, STICKY_BAR
+  title        String?
+  subtitle     String?
+  badgeText    String?
+  content      String   // JSON payload with all section settings, items, icons, etc.
+  displayOrder Int      @default(0)
+  isEnabled    Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model LandingPageRevision {
+  id          String   @id @default(cuid())
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  version     Int
+  snapshot    String   // Full JSON snapshot of sections and settings
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
+model CredentialInventory {
+  id                 String              @id @default(cuid())
+  planId             String
+  plan               Plan                @relation(fields: [planId], references: [id], onDelete: Cascade)
+  status             String              @default("AVAILABLE") // AVAILABLE, RESERVED, ASSIGNED, DELIVERED, INVALID, RETIRED
+  encryptedData      String              // AES-256-GCM encrypted payload
+  iv                 String
+  authTag            String
+  plainHint          String?             // Safe preview (e.g. user***@gmail.com, key prefix)
+  setupInstructions  String?
+  orderId            String?
+  reservedUntil      DateTime?
+  reservedSessionId  String?
+  deliveredAt        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  fulfillments       FulfillmentRecord[]
+}
+
+model Order {
+  id                 String              @id @default(cuid())
+  publicId           String              @unique // Cryptographic public reference (e.g. ord_abc123)
+  orderNumber        String              @unique // Human readable e.g. CS-10023
+  accessTokenHash    String              // SHA-256 of verification access token for guest lookup
+  customerId         String?
+  customer           Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName       String
+  customerEmail      String
+  customerPhone      String?
+  productId          String
+  product            Product             @relation(fields: [productId], references: [id])
+  planId             String
+  plan               Plan                @relation(fields: [planId], references: [id])
+  quantity           Int                 @default(1)
+  planSnapshot       String              // Immutable JSON snapshot of plan details at purchase time
+  unitPrice          Int                 // in paise
+  discountAmount     Int                 @default(0) // in paise
+  taxAmount          Int                 @default(0) // in paise
+  totalAmount        Int                 // in paise
+  currency           String              @default("INR")
+  paymentStatus      String              @default("PENDING") // PENDING, AUTHORIZED, PAID, FAILED, CANCELLED, REFUNDED
+  fulfillmentStatus  String              @default("PENDING") // PENDING, DELIVERING, DELIVERED, MANUAL_PENDING, FAILED
+  bonusStatus        String              @default("NOT_APPLICABLE") // NOT_APPLICABLE, PENDING_INPUT, PROCESSING, DELIVERED, SKIPPED
+  bonusCustomerInput String?             // e.g. customer email for Canva bonus
+  razorpayOrderId    String?             @unique
+  razorpayPaymentId  String?
+  razorpaySignature  String?
+  couponId           String?
+  coupon             Coupon?             @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode         String?
+  utmSource          String?
+  utmMedium          String?
+  utmCampaign        String?
+  utmContent         String?
+  utmTerm            String?
+  fbp                String?
+  fbc                String?
+  ipAddress          String?
+  userAgent          String?
+  referrer           String?
+  notes              String?
+  paidAt             DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  fulfillments       FulfillmentRecord[]
+  trackingEvents     TrackingEvent[]
+}
+
+model FulfillmentRecord {
+  id                       String              @id @default(cuid())
+  orderId                  String
+  order                    Order               @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryId              String?
+  inventory                CredentialInventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+  deliveryMethod           String
+  encryptedDeliveredContent String?
+  iv                       String?
+  authTag                  String?
+  replacedReason           String?
+  replacedAt               DateTime?
+  replacedByStaffId        String?
+  createdAt                DateTime            @default(now())
+}
+
+model Coupon {
+  id                   String    @id @default(cuid())
+  code                 String    @unique
+  discountType         String    @default("PERCENTAGE") // PERCENTAGE, FIXED
+  discountValue        Int       // Percentage (e.g. 10 for 10%) or Paise (e.g. 5000 for ₹50)
+  minOrderAmount       Int       @default(0) // in paise
+  maxDiscountAmount    Int?      // in paise
+  startDate            DateTime?
+  endDate              DateTime?
+  usageLimit           Int?      // Overall limit
+  usedCount            Int       @default(0)
+  perCustomerLimit     Int       @default(1)
+  isActive             Boolean   @default(true)
+  applicableProductIds String?   // JSON array of product IDs or null for all
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  orders               Order[]
+}
+
+model StoreSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  isEncrypted Boolean  @default(false)
+  group       String   @default("general") // general, branding, payment, tracking, policies, notifications
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  details    String?  // JSON string (sanitized, no raw credentials)
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+}
+
+model TrackingEvent {
+  id              String   @id @default(cuid())
+  eventId         String   @unique // For deduplication between browser Pixel and server CAPI
+  eventName       String   // PageView, ViewContent, AddToCart, InitiateCheckout, Purchase
+  eventSource     String   @default("BROWSER") // BROWSER, SERVER
+  orderId         String?
+  order           Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  status          String   @default("PENDING") // PENDING, SENT, FAILED
+  responseDetails String?
+  createdAt       DateTime @default(now())
+}
